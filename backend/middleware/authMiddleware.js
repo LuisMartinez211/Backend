@@ -7,10 +7,7 @@ const User = require('../models/User');
 const protect = async (req, res, next) => {
     let token;
 
-    if (
-        req.headers.authorization &&
-        req.headers.authorization.startsWith('Bearer')
-    ) {
+    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
         try {
             // Obtener el token del header
             token = req.headers.authorization.split(' ')[1];
@@ -21,16 +18,28 @@ const protect = async (req, res, next) => {
 
             // Obtener el usuario del token
             req.user = await User.findById(decoded.id).select('-password');
-            
+
+            // Si el usuario no se encuentra, devolver error
+            if (!req.user) {
+                return res.status(401).json({ success: false, message: 'No autorizado, usuario no encontrado' });
+            }
+
             next();
         } catch (error) {
-            console.error(error);
-            res.status(401).json({ message: 'No autorizado, token inválido' });
+            // Manejo de errores para token expirado o inválido
+            if (error.name === 'TokenExpiredError') {
+                return res.status(401).json({ success: false, message: 'El token ha expirado, por favor inicia sesión de nuevo' });
+            } else if (error.name === 'JsonWebTokenError') {
+                return res.status(401).json({ success: false, message: 'No autorizado, token inválido' });
+            } else {
+                console.error('Error en la verificación del token:', error);
+                return res.status(500).json({ success: false, message: 'Error en el servidor', error: error.message });
+            }
         }
     }
 
     if (!token) {
-        res.status(401).json({ message: 'No autorizado, no se encontró un token' });
+        return res.status(401).json({ success: false, message: 'No autorizado, no se encontró un token' });
     }
 };
 
@@ -38,7 +47,7 @@ const protect = async (req, res, next) => {
 const authorize = (...roles) => {
     return (req, res, next) => {
         if (!roles.includes(req.user.role)) {
-            return res.status(403).json({ message: 'No tienes permiso para acceder a esta ruta' });
+            return res.status(403).json({ success: false, message: 'No tienes permiso para acceder a esta ruta' });
         }
         next();
     };

@@ -4,9 +4,10 @@ const express = require('express');
 const router = express.Router();
 const Athlete = require('../models/Athlete');
 const TimeRecord = require('../models/TimeRecord');
+const { protect, authorize } = require('../middleware/authMiddleware');
 
-// Ruta para obtener estadísticas generales
-router.get('/statistics', async (req, res) => {
+// Ruta para obtener estadísticas generales (Acceso: solo admin)
+router.get('/statistics', protect, authorize('admin'), async (req, res) => {
   try {
     // Obtener el número total de atletas
     const totalAthletes = await Athlete.countDocuments();
@@ -21,21 +22,30 @@ router.get('/statistics', async (req, res) => {
       }
     ]);
 
-    // Si no hay registros de tiempo, el promedio será nulo o 0
     const averageTime = averageTimeResult.length > 0 ? averageTimeResult[0].averageTime : 0;
 
-    // Puedes agregar más estadísticas aquí
+    // Calcular el mejor y peor tiempo registrado
+    const bestTimeRecord = await TimeRecord.findOne().sort({ time: 1 }).populate('athlete');
+    const worstTimeRecord = await TimeRecord.findOne().sort({ time: -1 }).populate('athlete');
+
     const statistics = {
       totalAthletes,
-      totalCategories: 3,
-      averageTime,  // Agregar el tiempo promedio a las estadísticas
+      totalCategories: 3,  // Ejemplo de estadística estática
+      averageTime,
+      bestTime: bestTimeRecord ? bestTimeRecord.time : null,
+      worstTime: worstTimeRecord ? worstTimeRecord.time : null,
+      bestAthlete: bestTimeRecord ? bestTimeRecord.athlete : null,
+      worstAthlete: worstTimeRecord ? worstTimeRecord.athlete : null
     };
 
     // Enviar las estadísticas como respuesta
-    res.json(statistics);
+    res.status(200).json({
+      success: true,
+      data: statistics
+    });
   } catch (error) {
     console.error('Error al obtener las estadísticas:', error);
-    res.status(500).json({ message: 'Error al obtener las estadísticas' });
+    res.status(500).json({ success: false, message: 'Error al obtener las estadísticas', error: error.message });
   }
 });
 
