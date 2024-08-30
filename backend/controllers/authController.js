@@ -1,5 +1,3 @@
-// backend/controllers/authController.js
-
 const { check, validationResult } = require('express-validator');
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
@@ -84,6 +82,7 @@ const loginUser = async (req, res) => {
         // Verificar si el usuario existe
         const user = await User.findOne({ email });
 
+        // Verifica que el usuario existe y que la contraseña es correcta
         if (user && (await user.matchPassword(password))) {
             // Enviar la respuesta con el token JWT
             res.json({
