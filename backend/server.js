@@ -29,6 +29,8 @@ mongoose.connect(process.env.MONGO_URI, {
 .then(() => console.log('Conectado a MongoDB'))
 .catch((err) => console.error('Error al conectar a MongoDB:', err));
 
+app.set('trust proxy', 1);
+
 // Rutas de autenticación
 app.use('/api/auth', authRoutes);
 app.use('/api', userRoutes);
